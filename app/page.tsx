@@ -4,6 +4,7 @@
 import { useState } from "react";
 import ScanPanel from "@/components/ScanPanel";
 import InterviewChat from "@/components/InterviewChat";
+import LaunchDashboard from "@/components/LaunchDashboard";
 
 type ScanReport = {
   id: string;
@@ -23,11 +24,17 @@ type ScanReport = {
   meta: { scannedAtIso: string; notes: string[] };
 };
 
-type Mode = "home" | "scan" | "interview";
+type GeneratedResult = {
+  app: Record<string, unknown>;
+  pages: { about: string; privacy: string; support: string };
+};
+
+type Mode = "home" | "scan" | "interview" | "dashboard";
 
 export default function HomePage() {
   const [mode, setMode] = useState<Mode>("home");
   const [scanReport, setScanReport] = useState<ScanReport | null>(null);
+  const [generatedResult, setGeneratedResult] = useState<GeneratedResult | null>(null);
 
   function handleScanComplete(report: ScanReport) {
     setScanReport(report);
@@ -37,12 +44,22 @@ export default function HomePage() {
     setMode("interview");
   }
 
+  function handleGenerated(result: GeneratedResult) {
+    setGeneratedResult(result);
+    setMode("dashboard");
+  }
+
   // Build scan context string for the generation prompt
   const scanContext = scanReport
     ? scanReport.findings
         .map((f) => `[${f.priority}] ${f.platform}: ${f.title}`)
         .join("\n")
     : undefined;
+
+  // Determine base URL for hosted pages
+  const baseUrl = typeof window !== "undefined"
+    ? window.location.origin
+    : process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
   return (
     <main style={styles.main}>
@@ -53,6 +70,18 @@ export default function HomePage() {
             AppPreflight
           </span>
         </div>
+        {mode === "dashboard" && (
+          <button
+            onClick={() => {
+              setMode("home");
+              setGeneratedResult(null);
+              setScanReport(null);
+            }}
+            style={styles.newBtn}
+          >
+            + New app
+          </button>
+        )}
       </header>
 
       {/* Hero */}
@@ -109,7 +138,7 @@ export default function HomePage() {
             <FlowArrow />
             <FlowStep n="3" label="Pages generated" sub="Privacy, support, about" />
             <FlowArrow />
-            <FlowStep n="4" label="Link in App Store" sub="Ready to submit" />
+            <FlowStep n="4" label="Launch dashboard" sub="Copy, paste, submit" />
           </div>
         </div>
       )}
@@ -195,6 +224,18 @@ export default function HomePage() {
           <InterviewChat
             scanContext={scanContext}
             scanReportId={scanReport?.id}
+            onGenerated={handleGenerated}
+          />
+        </div>
+      )}
+
+      {/* Dashboard mode */}
+      {mode === "dashboard" && generatedResult && (
+        <div style={styles.container}>
+          <LaunchDashboard
+            app={generatedResult.app as any}
+            pages={generatedResult.pages}
+            baseUrl={baseUrl}
           />
         </div>
       )}
@@ -263,9 +304,20 @@ const styles: Record<string, React.CSSProperties> = {
     margin: "0 auto",
     padding: "20px 24px",
     display: "flex",
-    alignItems: "center"
+    alignItems: "center",
+    justifyContent: "space-between"
   },
   logo: { display: "flex", alignItems: "center", gap: 8 },
+  newBtn: {
+    padding: "8px 18px",
+    borderRadius: 10,
+    border: "1px solid #333",
+    background: "transparent",
+    color: "#888",
+    fontWeight: 700,
+    cursor: "pointer",
+    fontSize: 13
+  },
   hero: {
     maxWidth: 1060,
     margin: "0 auto",

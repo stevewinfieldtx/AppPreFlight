@@ -15,33 +15,31 @@ const STARTER = `Let's build your launch package. What's the name of your app, w
 
 export default function InterviewChat({
   scanContext,
-  scanReportId
+  scanReportId,
+  onGenerated
 }: {
   scanContext?: string;
   scanReportId?: string;
+  onGenerated?: (result: GeneratedResult) => void;
 }) {
   const [messages, setMessages] = useState<Message[]>([
     { role: "assistant", content: STARTER }
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [generated, setGenerated] = useState<GeneratedResult | null>(null);
+  const [generating, setGenerating] = useState(false);
 
   const transcript = useMemo(
     () => messages.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join("\n\n"),
     [messages]
   );
 
-  // Can go back if there's at least one user+assistant exchange beyond the starter
-  const canGoBack = messages.length >= 3 && !loading && !generated;
+  const canGoBack = messages.length >= 3 && !loading && !generating;
 
   function goBack() {
     if (!canGoBack) return;
-    // Remove the last assistant reply and the last user message
-    // This takes us back to the previous question so the user can re-answer
     const trimmed = messages.slice(0, -2);
     setMessages(trimmed);
-    // Pre-fill the input with what they previously typed so they can edit it
     const lastUserMsg = messages[messages.length - 2];
     if (lastUserMsg?.role === "user") {
       setInput(lastUserMsg.content);
@@ -73,6 +71,7 @@ export default function InterviewChat({
       setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
 
       if (data.complete) {
+        setGenerating(true);
         const fullTranscript = `${transcript}\n\nUSER: ${trimmed}\n\nASSISTANT: ${reply}`;
         const genRes = await fetch("/api/generate", {
           method: "POST",
@@ -85,7 +84,11 @@ export default function InterviewChat({
         });
         const genData = await genRes.json();
         if (!genData.ok) throw new Error(genData.error || "Generation failed");
-        setGenerated(genData);
+
+        // Pass result up to parent — parent handles the dashboard
+        if (onGenerated) {
+          onGenerated(genData);
+        }
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Something broke";
@@ -93,6 +96,7 @@ export default function InterviewChat({
         ...prev,
         { role: "assistant", content: `Error: ${errorMessage}` }
       ]);
+      setGenerating(false);
     } finally {
       setLoading(false);
     }
@@ -153,10 +157,25 @@ export default function InterviewChat({
             Thinking...
           </div>
         )}
+        {generating && (
+          <div
+            style={{
+              alignSelf: "flex-start",
+              padding: "16px 20px",
+              borderRadius: 16,
+              border: "1px solid #1e3a1e",
+              background: "rgba(29,158,117,0.04)",
+              color: "#1d9e75",
+              fontSize: 14
+            }}
+          >
+            Generating your launch package — pages, marketing copy, and compliance assets...
+          </div>
+        )}
       </div>
 
       {/* Input + Controls */}
-      {!generated && (
+      {!generating && (
         <div style={{ display: "grid", gap: 10 }}>
           <textarea
             value={input}
@@ -213,89 +232,6 @@ export default function InterviewChat({
           </div>
         </div>
       )}
-
-      {/* Generated results */}
-      {generated && (
-        <div
-          style={{
-            marginTop: 28,
-            padding: 24,
-            borderRadius: 16,
-            border: "1px solid #1e3a1e",
-            background: "rgba(29,158,117,0.04)"
-          }}
-        >
-          <div
-            style={{
-              fontSize: 11,
-              textTransform: "uppercase",
-              letterSpacing: 1.5,
-              color: "#1d9e75",
-              marginBottom: 8
-            }}
-          >
-            Launch assets generated
-          </div>
-          <h2 style={{ fontSize: 26, margin: "0 0 6px", color: "#fff" }}>
-            {String((generated.app as Record<string, unknown>).appName || "Your App")}
-          </h2>
-          <p style={{ color: "#999", margin: "0 0 20px", fontSize: 15 }}>
-            {String((generated.app as Record<string, unknown>).oneLiner || "")}
-          </p>
-
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 20 }}>
-            <a href={generated.pages.about} target="_blank" style={linkStyle}>
-              About page →
-            </a>
-            <a href={generated.pages.privacy} target="_blank" style={linkStyle}>
-              Privacy policy →
-            </a>
-            <a href={generated.pages.support} target="_blank" style={linkStyle}>
-              Support page →
-            </a>
-          </div>
-
-          <details style={{ marginTop: 12 }}>
-            <summary
-              style={{
-                cursor: "pointer",
-                color: "#888",
-                fontSize: 13,
-                fontWeight: 700,
-                marginBottom: 8
-              }}
-            >
-              View raw JSON
-            </summary>
-            <pre
-              style={{
-                overflowX: "auto",
-                padding: 16,
-                borderRadius: 12,
-                background: "#0a0a0a",
-                border: "1px solid #1e1e1e",
-                fontSize: 12,
-                color: "#aaa",
-                lineHeight: 1.5
-              }}
-            >
-              {JSON.stringify(generated.app, null, 2)}
-            </pre>
-          </details>
-        </div>
-      )}
     </div>
   );
 }
-
-const linkStyle: React.CSSProperties = {
-  display: "inline-block",
-  padding: "10px 20px",
-  borderRadius: 10,
-  border: "1px solid #2a2a2a",
-  background: "#141414",
-  color: "#fff",
-  textDecoration: "none",
-  fontWeight: 700,
-  fontSize: 14
-};
