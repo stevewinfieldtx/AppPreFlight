@@ -1,37 +1,53 @@
 // /lib/db.ts
-import fs from "node:fs/promises";
-import path from "node:path";
+import { supabase } from "./supabase";
 import { GeneratedApp } from "./schema";
 
-const DATA_PATH = path.join(process.cwd(), "data", "apps.json");
-
-async function ensureFile() {
-  try {
-    await fs.access(DATA_PATH);
-  } catch {
-    await fs.mkdir(path.dirname(DATA_PATH), { recursive: true });
-    await fs.writeFile(DATA_PATH, "[]", "utf8");
-  }
-}
-
 export async function getApps(): Promise<GeneratedApp[]> {
-  await ensureFile();
-  const raw = await fs.readFile(DATA_PATH, "utf8");
-  return JSON.parse(raw) as GeneratedApp[];
+  const { data, error } = await supabase
+    .from("preflight_apps")
+    .select("data")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[DB] Error fetching apps:", error);
+    return [];
+  }
+
+  return (data || []).map((row) => row.data as GeneratedApp);
 }
 
 export async function getAppBySlug(slug: string): Promise<GeneratedApp | null> {
-  const apps = await getApps();
-  return apps.find((a) => a.slug === slug) ?? null;
+  const { data, error } = await supabase
+    .from("preflight_apps")
+    .select("data")
+    .eq("slug", slug)
+    .single();
+
+  if (error) {
+    if (error.code !== "PGRST116") {
+      console.error("[DB] Error fetching app by slug:", error);
+    }
+    return null;
+  }
+
+  return data?.data as GeneratedApp || null;
 }
 
 export async function saveApp(app: GeneratedApp): Promise<void> {
-  const apps = await getApps();
-  const idx = apps.findIndex((a) => a.slug === app.slug);
-  if (idx >= 0) {
-    apps[idx] = app;
-  } else {
-    apps.push(app);
+  const { error } = await supabase
+    .from("preflight_apps")
+    .upsert(
+      {
+        slug: app.slug,
+        app_name: app.appName,
+        data: app,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "slug" }
+    );
+
+  if (error) {
+    console.error("[DB] Error saving app:", error);
+    throw new Error(`Failed to save app: ${error.message}`);
   }
-  await fs.writeFile(DATA_PATH, JSON.stringify(apps, null, 2), "utf8");
 }

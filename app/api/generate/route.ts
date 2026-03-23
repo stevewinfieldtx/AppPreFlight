@@ -23,8 +23,11 @@ export async function POST(req: NextRequest) {
     // Normalize slug
     generated.slug = slugify(generated.slug || generated.appName || "untitled-app");
 
-    // Fallback: copy support email to privacy contact if missing
-    if (!generated.privacy?.contactEmail && generated.support?.email) {
+    // Ensure privacy object exists, then fallback support email if missing
+    if (!generated.privacy) {
+      generated.privacy = {};
+    }
+    if (!generated.privacy.contactEmail && generated.support?.email) {
       generated.privacy.contactEmail = generated.support.email;
     }
 

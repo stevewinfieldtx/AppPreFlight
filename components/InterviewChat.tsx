@@ -32,6 +32,22 @@ export default function InterviewChat({
     [messages]
   );
 
+  // Can go back if there's at least one user+assistant exchange beyond the starter
+  const canGoBack = messages.length >= 3 && !loading && !generated;
+
+  function goBack() {
+    if (!canGoBack) return;
+    // Remove the last assistant reply and the last user message
+    // This takes us back to the previous question so the user can re-answer
+    const trimmed = messages.slice(0, -2);
+    setMessages(trimmed);
+    // Pre-fill the input with what they previously typed so they can edit it
+    const lastUserMsg = messages[messages.length - 2];
+    if (lastUserMsg?.role === "user") {
+      setInput(lastUserMsg.content);
+    }
+  }
+
   async function send() {
     const trimmed = input.trim();
     if (!trimmed || loading) return;
@@ -139,7 +155,7 @@ export default function InterviewChat({
         )}
       </div>
 
-      {/* Input */}
+      {/* Input + Controls */}
       {!generated && (
         <div style={{ display: "grid", gap: 10 }}>
           <textarea
@@ -159,23 +175,42 @@ export default function InterviewChat({
               resize: "vertical"
             }}
           />
-          <button
-            onClick={send}
-            disabled={loading || !input.trim()}
-            style={{
-              width: 160,
-              borderRadius: 12,
-              border: "1px solid #333",
-              background: loading ? "#333" : "#fff",
-              color: loading ? "#999" : "#000",
-              padding: "12px 16px",
-              fontWeight: 800,
-              cursor: loading ? "not-allowed" : "pointer",
-              fontSize: 15
-            }}
-          >
-            {loading ? "Working..." : "Send"}
-          </button>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            {canGoBack && (
+              <button
+                onClick={goBack}
+                style={{
+                  borderRadius: 12,
+                  border: "1px solid #333",
+                  background: "transparent",
+                  color: "#888",
+                  padding: "12px 16px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontSize: 14
+                }}
+              >
+                ← Go Back
+              </button>
+            )}
+            <button
+              onClick={send}
+              disabled={loading || !input.trim()}
+              style={{
+                width: 160,
+                borderRadius: 12,
+                border: "1px solid #333",
+                background: loading ? "#333" : "#fff",
+                color: loading ? "#999" : "#000",
+                padding: "12px 16px",
+                fontWeight: 800,
+                cursor: loading ? "not-allowed" : "pointer",
+                fontSize: 15
+              }}
+            >
+              {loading ? "Working..." : "Send"}
+            </button>
+          </div>
         </div>
       )}
 
