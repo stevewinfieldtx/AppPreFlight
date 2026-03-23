@@ -67,7 +67,7 @@ export function detectPolicyPages(allPaths: string[]) {
   const privacyPatterns = [/(^|\/)privacy(\.|\/|$)/, /(^|\/)privacy-policy(\.|\/|$)/];
   const termsPatterns = [/(^|\/)terms(\.|\/|$)/, /(^|\/)terms-of-service(\.|\/|$)/, /(^|\/)tos(\.|\/|$)/];
   const supportPatterns = [/(^|\/)support(\.|\/|$)/, /(^|\/)contact(\.|\/|$)/, /(^|\/)help(\.|\/|$)/];
-  const deletePatterns = [/(^|\/)delete-account(\.|\/|$)/, /(^|\/)account-deletion(\.|\/|$)/];
+  const deletePatterns = [/(^|\/)delete-account(\.|\/|$)/, /(^|\/)account-deletion(\.|\/|$)/, /(^|\/)account\/delete(\.|\/|$)/];
 
   const matchesAny = (path: string, patterns: RegExp[]) => patterns.some((r) => r.test(path));
 

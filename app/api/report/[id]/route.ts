@@ -5,11 +5,11 @@ export const runtime = "nodejs";
 
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
-  const report = getReport(id);
+  const report = await getReport(id);
 
   if (!report) {
     return NextResponse.json(
-      { error: "Report not found. (MVP store resets when server restarts.)" },
+      { error: "Report not found." },
       { status: 404 }
     );
   }

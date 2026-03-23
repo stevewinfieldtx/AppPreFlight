@@ -1,3 +1,5 @@
+import pool from "./postgres";
+
 type Finding = {
   priority: "P0" | "P1" | "P2";
   platform: "iOS" | "Android" | "Both";
@@ -21,27 +23,36 @@ export type Report = {
   };
 };
 
-const g = globalThis as any;
-
-// Persist across hot reload in dev
-if (!g.__APP_PREFLIGHT_REPORTS__) {
-  g.__APP_PREFLIGHT_REPORTS__ = new Map<string, Report>();
+let tableReady = false;
+async function ensureTable() {
+  if (tableReady) return;
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS scan_reports (
+      id text PRIMARY KEY,
+      repo_url text NOT NULL,
+      data jsonb NOT NULL,
+      created_at timestamptz DEFAULT now()
+    )
+  `);
+  tableReady = true;
 }
 
-const store: Map<string, Report> = g.__APP_PREFLIGHT_REPORTS__;
-
-// Keep last N reports
-const MAX_REPORTS = 200;
-
-export function saveReport(report: Report) {
-  store.set(report.id, report);
-  // basic pruning
-  if (store.size > MAX_REPORTS) {
-    const firstKey = store.keys().next().value;
-    if (firstKey) store.delete(firstKey);
-  }
+export async function saveReport(report: Report) {
+  await ensureTable();
+  await pool.query(
+    `INSERT INTO scan_reports (id, repo_url, data)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (id)
+     DO UPDATE SET repo_url = $2, data = $3`,
+    [report.id, report.repoUrl, JSON.stringify(report)]
+  );
 }
 
-export function getReport(id: string): Report | null {
-  return store.get(id) || null;
+export async function getReport(id: string): Promise<Report | null> {
+  await ensureTable();
+  const { rows } = await pool.query(
+    "SELECT data FROM scan_reports WHERE id = $1 LIMIT 1",
+    [id]
+  );
+  return rows.length > 0 ? (rows[0].data as Report) : null;
 }

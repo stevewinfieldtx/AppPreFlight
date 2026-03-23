@@ -107,7 +107,7 @@ export default function ReportPage({ params }: { params: Promise<{ id: string }>
           </div>
 
           <p style={{ marginTop: 18, color: "#666" }}>
-            Note: MVP reports are stored in memory and may disappear if the server restarts. We’ll make this permanent with Vercel KV next.
+            Reports are stored permanently and can be shared via this URL.
           </p>
         </>
       )}
