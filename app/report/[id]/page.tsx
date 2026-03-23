@@ -25,13 +25,19 @@ type Report = {
   };
 };
 
-export default function ReportPage({ params }: { params: { id: string } }) {
+export default function ReportPage({ params }: { params: Promise<{ id: string }> }) {
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [id, setId] = useState<string>("");
 
   useEffect(() => {
+    params.then((p) => setId(p.id));
+  }, [params]);
+
+  useEffect(() => {
+    if (!id) return;
     let alive = true;
-    fetch(`/api/report/${params.id}`)
+    fetch(`/api/report/${id}`)
       .then(async (r) => {
         const data = await r.json();
         if (!r.ok) throw new Error(data?.error || "Failed to load report");
@@ -42,13 +48,13 @@ export default function ReportPage({ params }: { params: { id: string } }) {
     return () => {
       alive = false;
     };
-  }, [params.id]);
+  }, [id]);
 
   return (
     <main style={{ maxWidth: 1000, margin: "40px auto", padding: 16, fontFamily: "system-ui" }}>
       <h1 style={{ marginBottom: 6 }}>Shared Report</h1>
       <p style={{ color: "#555", marginTop: 0 }}>
-        Report ID: <b>{params.id}</b>
+        Report ID: <b>{id}</b>
       </p>
 
       {error && (
