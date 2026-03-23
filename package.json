@@ -23,6 +23,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.13.9",
+    "@types/pg": "^8.20.0",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
     "typescript": "^5.7.3"
