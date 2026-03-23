@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 import JSZip from "jszip";
 import { normalizeGitHubRepoUrl, fetchZipBytesFromRepoUrl } from "@/lib/github";
 import { detectAppType, scanRepoWide, detectPolicyPages } from "@/lib/scanners/repoWide";
-import { saveReport } from "@/lib/reportStore";
 import type { ScanReport, Finding } from "@/lib/schema";
 
 function id() {
@@ -124,7 +123,7 @@ export async function POST(req: NextRequest) {
         topRisks: findings
           .filter((f) => f.priority === "P0" || f.priority === "P1")
           .slice(0, 4)
-          .map((f) => `${f.platform}: ${f.title}`) || ["No P0 risks found."],
+          .map((f) => `${f.platform}: ${f.title}`),
       },
       findings,
       meta: {
@@ -137,7 +136,6 @@ export async function POST(req: NextRequest) {
       },
     };
 
-    await saveReport(report);
     return NextResponse.json({ ok: true, report });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error";

@@ -56,11 +56,6 @@ export default function HomePage() {
         .join("\n")
     : undefined;
 
-  // Determine base URL for hosted pages
-  const baseUrl = typeof window !== "undefined"
-    ? window.location.origin
-    : process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-
   return (
     <main style={styles.main}>
       {/* Header */}
@@ -235,7 +230,6 @@ export default function HomePage() {
           <LaunchDashboard
             app={generatedResult.app as any}
             pages={generatedResult.pages}
-            baseUrl={baseUrl}
           />
         </div>
       )}
