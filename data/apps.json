@@ -1,1 +1,96 @@
-[]
+[
+  {
+    "slug": "bible-for-life-stages",
+    "appName": "Bible for Life Stages",
+    "companyName": "Life Stages AI (WinTech Partners)",
+    "oneLiner": "Scripture that speaks your name, your stress, your moment.",
+    "targetAudience": "Anyone who wants the Bible to feel like it was written for the exact second they're living.",
+    "corePurpose": "Turn flat verses into living words that meet you in your real-life crisis, joy, or transition.",
+    "keyFeatures": [
+      "Daily verse written for your age, gender, country & struggle",
+      "One-tap plain-language explanation of any chapter",
+      "Lifeline topics (money, family, school, grief) that re-write today's verse for your pain",
+      "$5/mo premium unlocks personalized stories, poems, songs + unlimited chat with the verse",
+      "Upcoming church integration: pastor's sermon becomes your Monday devotional"
+    ],
+    "differentiators": [
+      "No generic commentary—every word factors in your profile",
+      "No ads, no tracking SDKs, no user-generated noise",
+      "Born from 3 a.m. stage-four-cancer desperation—built to save lives, not clicks",
+      "Church plug-in turns pulpit messages into personal follow-ups",
+      "Voice conversations coming next—pray out loud, get spoken back"
+    ],
+    "favoritePart": "The instant someone sees today's verse and whispers, 'How did it know?'",
+    "whatNext": "Roll out church dashboard so pastors can watch anonymized struggles and tailor next Sunday's message to the exact pain in the pews.",
+    "toneProfile": "Urgent empathy—like a friend who's been in the ICU at 3 a.m. and won't let you read another flat verse.",
+    "founderStory": "At 3 a.m. during stage-four cancer, the founder searched how to end his life. A Bible app offered a verse that meant nothing. He swore technology could make Scripture speak the language of feeding tubes, insomnia, and family despair—and began building the engine that night.",
+    "support": {
+      "email": "support@bibleforlifestages.com",
+      "url": "",
+      "faq": [
+        {
+          "question": "Do I need an account?",
+          "answer": "Email unlocks the verse; extra profile details unlock the personalization."
+        },
+        {
+          "question": "Is my data sold?",
+          "answer": "Never. No ads, no trackers, no third-party pixels."
+        },
+        {
+          "question": "Can pastors see my personal struggles?",
+          "answer": "Only anonymized, grouped insights—never your name or details."
+        },
+        {
+          "question": "What if I cancel the $5 subscription?",
+          "answer": "You keep the daily verse and lifelines; premium chat & content pause until you return."
+        },
+        {
+          "question": "Which Bible translation is used?",
+          "answer": "You pick—KJV, NIV, ESV, etc.—and the explanation still speaks your language."
+        }
+      ]
+    },
+    "privacy": {
+      "collectsAccounts": true,
+      "collectsAnalytics": true,
+      "collectsPayments": true,
+      "collectsLocation": false,
+      "collectsUserContent": false,
+      "dataCollected": [
+        "email",
+        "optional age range",
+        "optional gender",
+        "self-reported country",
+        "optional church preference",
+        "optional life struggle tags"
+      ],
+      "thirdParties": [
+        "Vercel Analytics"
+      ],
+      "usesTracking": false,
+      "childrenUnder13": false,
+      "contactEmail": "support@bibleforlifestages.com"
+    },
+    "marketing": {
+      "appStoreTitle": "Bible for Life Stages",
+      "subtitle": "Today's verse, written for your exact life right now.",
+      "keywords": [
+        "daily bible verse",
+        "personalized devotional",
+        "bible for my life",
+        "christian lifeline",
+        "scripture that speaks"
+      ],
+      "description": "At 3 a.m. in a cancer ward, a verse felt empty—so we built the app that makes Scripture speak your name. Bible for Life Stages gives you a daily verse rewritten for your age, gender, country, and current struggle (money, family, grief, school). Tap once for a plain-language explanation, dive deeper with lifeline topics, or upgrade to $5/mo for unlimited chat with the verse itself—stories, poems, songs, and soon voice conversation. No ads, no tracking, just God talking to the real you. Coming next: your pastor's sermon becomes Monday's personalized devotional.",
+      "screenshotHeadlines": [
+        "Today's verse already knows your struggle",
+        "Tap once—Scripture speaks plain English",
+        "Lifelines re-write the Bible for your pain",
+        "Chat with the verse like it's 3 a.m. and you're not alone",
+        "Premium unlocks songs, poems, stories—written for you",
+        "Pastor mode: Sunday's word becomes Monday's personal follow-up"
+      ]
+    },
+    "scanReportId": "f43qi6oc"
+  }
+]
