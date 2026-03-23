@@ -1,48 +1,37 @@
 // /lib/db.ts
-import pool from "./postgres";
+import fs from "node:fs/promises";
+import path from "node:path";
 import { GeneratedApp } from "./schema";
 
-// Auto-create table on first use
-let tableReady = false;
-async function ensureTable() {
-  if (tableReady) return;
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS preflight_apps (
-      id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-      slug text NOT NULL UNIQUE,
-      app_name text NOT NULL,
-      data jsonb NOT NULL,
-      created_at timestamptz DEFAULT now(),
-      updated_at timestamptz DEFAULT now()
-    )
-  `);
-  tableReady = true;
+const DATA_PATH = path.join(process.cwd(), "data", "apps.json");
+
+async function ensureFile() {
+  try {
+    await fs.access(DATA_PATH);
+  } catch {
+    await fs.mkdir(path.dirname(DATA_PATH), { recursive: true });
+    await fs.writeFile(DATA_PATH, "[]", "utf8");
+  }
 }
 
 export async function getApps(): Promise<GeneratedApp[]> {
-  await ensureTable();
-  const { rows } = await pool.query(
-    "SELECT data FROM preflight_apps ORDER BY created_at DESC"
-  );
-  return rows.map((r: { data: GeneratedApp }) => r.data);
+  await ensureFile();
+  const raw = await fs.readFile(DATA_PATH, "utf8");
+  return JSON.parse(raw) as GeneratedApp[];
 }
 
 export async function getAppBySlug(slug: string): Promise<GeneratedApp | null> {
-  await ensureTable();
-  const { rows } = await pool.query(
-    "SELECT data FROM preflight_apps WHERE slug = $1 LIMIT 1",
-    [slug]
-  );
-  return rows.length > 0 ? (rows[0].data as GeneratedApp) : null;
+  const apps = await getApps();
+  return apps.find((a) => a.slug === slug) ?? null;
 }
 
 export async function saveApp(app: GeneratedApp): Promise<void> {
-  await ensureTable();
-  await pool.query(
-    `INSERT INTO preflight_apps (slug, app_name, data)
-     VALUES ($1, $2, $3)
-     ON CONFLICT (slug)
-     DO UPDATE SET app_name = $2, data = $3, updated_at = now()`,
-    [app.slug, app.appName, JSON.stringify(app)]
-  );
+  const apps = await getApps();
+  const idx = apps.findIndex((a) => a.slug === app.slug);
+  if (idx >= 0) {
+    apps[idx] = app;
+  } else {
+    apps.push(app);
+  }
+  await fs.writeFile(DATA_PATH, JSON.stringify(apps, null, 2), "utf8");
 }
