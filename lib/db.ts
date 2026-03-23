@@ -24,7 +24,7 @@ export async function getApps(): Promise<GeneratedApp[]> {
   const { rows } = await pool.query(
     "SELECT data FROM preflight_apps ORDER BY created_at DESC"
   );
-  return rows.map((r) => r.data as GeneratedApp);
+  return rows.map((r: { data: GeneratedApp }) => r.data);
 }
 
 export async function getAppBySlug(slug: string): Promise<GeneratedApp | null> {
