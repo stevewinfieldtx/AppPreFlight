@@ -1,10 +1,20 @@
 // /app/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ScanPanel from "@/components/ScanPanel";
-import InterviewChat from "@/components/InterviewChat";
+import InterviewChat, { INTERVIEW_STARTER } from "@/components/InterviewChat";
 import LaunchDashboard from "@/components/LaunchDashboard";
+import {
+  loadLocal,
+  saveLocal,
+  clearLocal,
+  saveServer,
+  loadServer,
+  newSessionId
+} from "@/lib/persist";
+
+type Message = { role: "assistant" | "user"; content: string };
 
 type ScanReport = {
   id: string;
@@ -31,10 +41,77 @@ type GeneratedResult = {
 
 type Mode = "home" | "scan" | "interview" | "dashboard";
 
+type FlowState = {
+  mode?: Mode;
+  scanReport?: ScanReport | null;
+  generatedResult?: GeneratedResult | null;
+  interviewMessages?: Message[];
+  updatedAt?: number;
+};
+
 export default function HomePage() {
   const [mode, setMode] = useState<Mode>("home");
   const [scanReport, setScanReport] = useState<ScanReport | null>(null);
   const [generatedResult, setGeneratedResult] = useState<GeneratedResult | null>(null);
+  const [interviewMessages, setInterviewMessages] = useState<Message[]>([INTERVIEW_STARTER]);
+  const [restored, setRestored] = useState(false);
+
+  // Becomes true once we've attempted to restore prior progress, so the
+  // autosave effect below never overwrites saved work with the initial blank
+  // state during the first render.
+  const hydrated = useRef(false);
+
+  function applyState(s: FlowState | null | undefined): boolean {
+    if (!s || typeof s !== "object") return false;
+    const hasProgress =
+      (Array.isArray(s.interviewMessages) && s.interviewMessages.length > 1) ||
+      !!s.scanReport ||
+      !!s.generatedResult ||
+      (!!s.mode && s.mode !== "home");
+    if (!hasProgress) return false;
+
+    if (s.mode) setMode(s.mode);
+    setScanReport((s.scanReport as ScanReport) ?? null);
+    setGeneratedResult((s.generatedResult as GeneratedResult) ?? null);
+    if (Array.isArray(s.interviewMessages) && s.interviewMessages.length) {
+      setInterviewMessages(s.interviewMessages);
+    }
+    setRestored(true);
+    return true;
+  }
+
+  // ── Restore on load: localStorage first (instant), then reconcile with the
+  //    server copy in case this is a fresh browser / another device.
+  useEffect(() => {
+    const local = loadLocal<FlowState>();
+    applyState(local);
+    hydrated.current = true;
+
+    (async () => {
+      const server = await loadServer();
+      const serverState = (server?.data as FlowState) || null;
+      if (serverState) {
+        const localTs = local?.updatedAt ?? 0;
+        const serverTs = serverState.updatedAt ?? 0;
+        if (!local || serverTs > localTs) applyState(serverState);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Autosave after every stage change (scan, each interview turn, generation).
+  useEffect(() => {
+    if (!hydrated.current) return;
+    const state: FlowState = {
+      mode,
+      scanReport,
+      generatedResult,
+      interviewMessages,
+      updatedAt: Date.now()
+    };
+    saveLocal(state);
+    saveServer(mode, state);
+  }, [mode, scanReport, generatedResult, interviewMessages]);
 
   function handleScanComplete(report: ScanReport) {
     setScanReport(report);
@@ -47,6 +124,16 @@ export default function HomePage() {
   function handleGenerated(result: GeneratedResult) {
     setGeneratedResult(result);
     setMode("dashboard");
+  }
+
+  function startOver() {
+    clearLocal();
+    newSessionId();
+    setScanReport(null);
+    setGeneratedResult(null);
+    setInterviewMessages([INTERVIEW_STARTER]);
+    setRestored(false);
+    setMode("home");
   }
 
   // Build scan context string for the generation prompt
@@ -66,18 +153,25 @@ export default function HomePage() {
           </span>
         </div>
         {mode === "dashboard" && (
-          <button
-            onClick={() => {
-              setMode("home");
-              setGeneratedResult(null);
-              setScanReport(null);
-            }}
-            style={styles.newBtn}
-          >
+          <button onClick={startOver} style={styles.newBtn}>
             + New app
           </button>
         )}
       </header>
+
+      {/* Resume banner — your work was picked up automatically */}
+      {restored && mode !== "home" && (
+        <div style={styles.resumeWrap}>
+          <div style={styles.resumeBanner}>
+            <span style={{ color: "#1d9e75", fontWeight: 700, fontSize: 13 }}>
+              Picked up where you left off — your progress is saved automatically.
+            </span>
+            <button onClick={startOver} style={styles.resumeBtn}>
+              Start over
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Hero */}
       {mode === "home" && (
@@ -217,6 +311,8 @@ export default function HomePage() {
             all hosted and ready to link.
           </p>
           <InterviewChat
+            messages={interviewMessages}
+            onMessagesChange={setInterviewMessages}
             scanContext={scanContext}
             scanReportId={scanReport?.id}
             onGenerated={handleGenerated}
@@ -311,6 +407,32 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     cursor: "pointer",
     fontSize: 13
+  },
+  resumeWrap: {
+    maxWidth: 1060,
+    margin: "0 auto",
+    padding: "0 24px"
+  },
+  resumeBanner: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    padding: "10px 16px",
+    borderRadius: 10,
+    border: "1px solid #1e3a1e",
+    background: "rgba(29,158,117,0.05)",
+    flexWrap: "wrap"
+  },
+  resumeBtn: {
+    padding: "6px 14px",
+    borderRadius: 8,
+    border: "1px solid #333",
+    background: "transparent",
+    color: "#888",
+    fontWeight: 700,
+    cursor: "pointer",
+    fontSize: 12
   },
   hero: {
     maxWidth: 1060,

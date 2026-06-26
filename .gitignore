@@ -16,3 +16,6 @@
 .DS_Store
 *.tsbuildinfo
 next-env.d.ts
+
+# autosave file fallback (used only when DATABASE_URL is unset)
+/data/sessions.json

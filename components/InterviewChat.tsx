@@ -13,21 +13,25 @@ type GeneratedResult = {
 
 const STARTER = `Let's build your launch package. What's the name of your app, what does it do, and who is it for?`;
 
+export const INTERVIEW_STARTER: Message = { role: "assistant", content: STARTER };
+
 export default function InterviewChat({
+  messages,
+  onMessagesChange,
   scanContext,
   scanReportId,
   onGenerated
 }: {
+  messages: Message[];
+  onMessagesChange: (messages: Message[]) => void;
   scanContext?: string;
   scanReportId?: string;
   onGenerated?: (result: GeneratedResult) => void;
 }) {
-  const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", content: STARTER }
-  ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
 
   const transcript = useMemo(
     () => messages.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join("\n\n"),
@@ -38,11 +42,29 @@ export default function InterviewChat({
 
   function goBack() {
     if (!canGoBack) return;
-    const trimmed = messages.slice(0, -2);
-    setMessages(trimmed);
     const lastUserMsg = messages[messages.length - 2];
-    if (lastUserMsg?.role === "user") {
-      setInput(lastUserMsg.content);
+    onMessagesChange(messages.slice(0, -2));
+    if (lastUserMsg?.role === "user") setInput(lastUserMsg.content);
+  }
+
+  // Generation is its own function so the "Retry" button can re-run it against
+  // the saved transcript — a finished interview is never thrown away.
+  async function runGeneration(fullTranscript: string) {
+    setGenError(null);
+    setGenerating(true);
+    try {
+      const genRes = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript: fullTranscript, scanContext, scanReportId })
+      });
+      const genData = await genRes.json();
+      if (!genData.ok) throw new Error(genData.error || "Generation failed");
+      onGenerated?.(genData);
+    } catch (err) {
+      setGenError(err instanceof Error ? err.message : "Generation failed");
+    } finally {
+      setGenerating(false);
     }
   }
 
@@ -50,8 +72,8 @@ export default function InterviewChat({
     const trimmed = input.trim();
     if (!trimmed || loading) return;
 
-    const nextMessages: Message[] = [...messages, { role: "user", content: trimmed }];
-    setMessages(nextMessages);
+    const withUser: Message[] = [...messages, { role: "user", content: trimmed }];
+    onMessagesChange(withUser);
     setInput("");
     setLoading(true);
 
@@ -59,44 +81,27 @@ export default function InterviewChat({
       const res = await fetch("/api/interview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: nextMessages,
-          latestUserMessage: trimmed
-        })
+        body: JSON.stringify({ messages: withUser, latestUserMessage: trimmed })
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Interview failed");
 
       const reply = String(data.message).replace("__INTERVIEW_COMPLETE__", "").trim();
-      setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+      const withReply: Message[] = [...withUser, { role: "assistant", content: reply }];
+      onMessagesChange(withReply);
 
       if (data.complete) {
-        setGenerating(true);
-        const fullTranscript = `${transcript}\n\nUSER: ${trimmed}\n\nASSISTANT: ${reply}`;
-        const genRes = await fetch("/api/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            transcript: fullTranscript,
-            scanContext,
-            scanReportId
-          })
-        });
-        const genData = await genRes.json();
-        if (!genData.ok) throw new Error(genData.error || "Generation failed");
-
-        // Pass result up to parent — parent handles the dashboard
-        if (onGenerated) {
-          onGenerated(genData);
-        }
+        const fullTranscript = withReply
+          .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
+          .join("\n\n");
+        await runGeneration(fullTranscript);
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Something broke";
-      setMessages((prev) => [
-        ...prev,
+      onMessagesChange([
+        ...withUser,
         { role: "assistant", content: `Error: ${errorMessage}` }
       ]);
-      setGenerating(false);
     } finally {
       setLoading(false);
     }
@@ -170,6 +175,40 @@ export default function InterviewChat({
             }}
           >
             Generating your launch package — pages, marketing copy, and compliance assets...
+          </div>
+        )}
+        {genError && !generating && (
+          <div
+            style={{
+              alignSelf: "flex-start",
+              maxWidth: "80%",
+              padding: "16px 20px",
+              borderRadius: 16,
+              border: "1px solid #4a2a2a",
+              background: "rgba(226,75,74,0.06)"
+            }}
+          >
+            <div style={{ color: "#E24B4A", fontWeight: 700, fontSize: 14, marginBottom: 6 }}>
+              Generation didn&apos;t finish
+            </div>
+            <div style={{ color: "#bbb", fontSize: 13, lineHeight: 1.5, marginBottom: 12 }}>
+              Your interview is saved — nothing was lost. {genError}
+            </div>
+            <button
+              onClick={() => runGeneration(transcript)}
+              style={{
+                borderRadius: 12,
+                border: "1px solid #333",
+                background: "#fff",
+                color: "#000",
+                padding: "10px 18px",
+                fontWeight: 800,
+                cursor: "pointer",
+                fontSize: 14
+              }}
+            >
+              Retry generating →
+            </button>
           </div>
         )}
       </div>
