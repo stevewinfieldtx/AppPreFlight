@@ -41,6 +41,22 @@ export async function callOpenRouter(
   return String(content);
 }
 
+// Some models ignore json mode and wrap their output in code fences or add a
+// sentence of commentary. Pull the actual JSON object out before parsing so a
+// completed interview never dies on a JSON.parse error.
+function extractJson(raw: string): string {
+  let s = raw.trim();
+
+  const fenced = s.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenced) s = fenced[1].trim();
+
+  const first = s.indexOf("{");
+  const last = s.lastIndexOf("}");
+  if (first >= 0 && last > first) s = s.slice(first, last + 1);
+
+  return s.trim();
+}
+
 export async function callOpenRouterJSON(prompt: string) {
   const raw = await callOpenRouter(
     [
@@ -49,5 +65,18 @@ export async function callOpenRouterJSON(prompt: string) {
     ],
     { temperature: 0.3, jsonMode: true }
   );
-  return JSON.parse(raw);
+
+  const cleaned = extractJson(raw);
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    // Last resort: try the unmodified payload before giving up.
+    try {
+      return JSON.parse(raw);
+    } catch {
+      throw new Error(
+        "Model did not return valid JSON. First 200 chars: " + raw.slice(0, 200)
+      );
+    }
+  }
 }
