@@ -182,10 +182,11 @@ export default function HomePage() {
           </h1>
           <p style={styles.subtitle}>
             One conversation turns your app into everything Apple and Google
-            need — privacy pages, support pages, marketing copy, hosted and
-            ready to link.
+            need to prepare — privacy pages, support pages, marketing copy, and
+            styled screenshots from your own captures.
           </p>
 
+          <p><a href="/screenshots" style={{ color: "#76dab5", fontWeight: 700 }}>Open screenshot studio — no interview needed →</a></p>
           <div style={styles.cards}>
             <div
               style={styles.card}

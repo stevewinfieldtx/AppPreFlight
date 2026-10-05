@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import ScreenshotStudio from "@/components/ScreenshotStudio";
 
 type GeneratedApp = {
   slug: string;
@@ -65,6 +66,8 @@ export default function LaunchDashboard({
   const [aiLoading, setAiLoading] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
+  const [shotCount, setShotCount] = useState(0);
+  const [shotsExported, setShotsExported] = useState(false);
 
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
 
@@ -106,7 +109,8 @@ export default function LaunchDashboard({
     { label: "Support email set", done: !!app.support.email },
     { label: "FAQ items (3+)", done: app.support.faq.length >= 3 },
     { label: "Screenshot headlines (3+)", done: app.marketing.screenshotHeadlines.length >= 3 },
-    { label: "Screenshots uploaded", done: false },
+    { label: "Screenshots uploaded", done: shotCount > 0 },
+    { label: "Screenshot ZIP generated at selected sizes", done: shotsExported },
   ];
   const completedCount = checklist.filter((c) => c.done).length;
 
@@ -190,37 +194,16 @@ export default function LaunchDashboard({
           </div>
         )}
 
-        {tab === "screenshots" && (
-          <div>
-            <div style={s.sectionTitle}>Screenshot studio</div>
-            <p style={s.sectionSub}>Upload your app screenshots. We crop to required sizes and overlay your marketing headlines.</p>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 20 }}>
-              {[
-                { name: 'iPhone 6.7"', size: "1290 x 2796 px", note: "Required" },
-                { name: 'iPhone 6.5"', size: "1242 x 2688 px", note: "Fallback" },
-                { name: 'iPad 12.9"', size: "2048 x 2732 px", note: "Recommended" },
-              ].map((sz) => (
-                <div key={sz.name} style={s.sizeCard}>
-                  <div style={{ fontWeight: 700, fontSize: 14 }}>{sz.name}</div>
-                  <div style={{ color: "#888", fontSize: 13 }}>{sz.size}</div>
-                  <div style={{ color: "#666", fontSize: 12, marginTop: 4 }}>{sz.note}</div>
-                </div>
-              ))}
-            </div>
-            <div style={s.uploadZone}>
-              <div style={{ fontSize: 28, color: "#333", marginBottom: 8 }}>+</div>
-              <div style={{ fontWeight: 700, marginBottom: 4 }}>Drop screenshots here or click to upload</div>
-              <div style={{ color: "#888", fontSize: 13 }}>PNG or JPEG. We resize and add headline overlays.</div>
-              <div style={{ color: "#555", fontSize: 12, marginTop: 8 }}>Coming soon — screenshot processing with AI marketing overlays</div>
-            </div>
-            <div style={{ marginTop: 20 }}>
-              <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>Your headline overlays</div>
-              {app.marketing.screenshotHeadlines.map((h, i) => (
-                <div key={i} style={{ color: "#ccc", fontSize: 14, marginBottom: 4 }}>Screenshot {i + 1}: "{h}"</div>
-              ))}
-            </div>
-          </div>
-        )}
+        {<div hidden={tab !== "screenshots"}>
+          <ScreenshotStudio
+            slug={app.slug}
+            active={tab === "screenshots"}
+            headlines={app.marketing.screenshotHeadlines}
+            onHeadlinesChange={(next) => setApp((prev) => ({ ...prev, marketing: { ...prev.marketing, screenshotHeadlines: next } }))}
+            onCountChange={setShotCount}
+            onExportChange={setShotsExported}
+          />
+        </div>}
 
         {tab === "checklist" && (
           <div>
@@ -242,22 +225,22 @@ export default function LaunchDashboard({
         {tab === "export" && (
           <div>
             <div style={s.sectionTitle}>Export and next steps</div>
-            <p style={s.sectionSub}>Everything's generated. Here's how to move forward.</p>
+            <p style={s.sectionSub}>Review your launch materials, export screenshots, and complete submission in your developer account.</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
               <div style={s.exportCard}>
                 <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>Download everything</div>
-                <p style={{ color: "#888", fontSize: 14, lineHeight: 1.6, margin: "0 0 14px" }}>Get your complete launch package as JSON — App Store copy, pages data, and submission checklist.</p>
+                <p style={{ color: "#888", fontSize: 14, lineHeight: 1.6, margin: "0 0 14px" }}>Get your complete launch package as JSON — App Store copy, pages data, and submission checklist. Finished screenshots download separately as a zip from the Screenshots tab.</p>
                 <button onClick={() => { const b = new Blob([JSON.stringify(app, null, 2)], { type: "application/json" }); const u = URL.createObjectURL(b); const a = document.createElement("a"); a.href = u; a.download = `${app.slug}-launch-package.json`; a.click(); URL.revokeObjectURL(u); }} style={s.exportBtn}>Download launch package</button>
               </div>
               <div style={s.exportCard}>
-                <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>We submit for you</div>
-                <p style={{ color: "#888", fontSize: 14, lineHeight: 1.6, margin: "0 0 14px" }}>Our team handles the full submission — certificates, upload, metadata, review notes, and resubmission if rejected.</p>
-                <button style={s.premiumBtn}>Get submission help — $97</button>
+                <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>Finish your submission</div>
+                <p style={{ color: "#888", fontSize: 14, lineHeight: 1.6, margin: "0 0 14px" }}>Submission still requires your signed build, developer account, privacy declarations, age rating, pricing, and review information.</p>
+                <p style={{ color: "#aaa", fontSize: 13 }}>Automatic build upload and store submission are not connected yet. Use the steps below to submit through your developer account.</p>
               </div>
             </div>
             <div style={s.infoBox}>
               <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 14 }}>DIY submission steps</div>
-              {["Log into App Store Connect with your Apple Developer account", "Create a new app and paste your title, subtitle, and description", "Set Privacy Policy URL and Support URL to your hosted pages", "Upload screenshots (use the sizes from the Screenshots tab)", "Upload your build via Xcode or Transporter, then submit for review"].map((step, i) => (
+              {["Log into App Store Connect with your Apple Developer account", "Create a new app and paste your title, subtitle, and description", "Set Privacy Policy URL and Support URL to your hosted pages", "Upload the screenshots you exported from the Screenshots tab (one folder per display size)", "Upload your build via Xcode or Transporter, then submit for review"].map((step, i) => (
                 <div key={i} style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8, fontSize: 14, color: "#ccc" }}>
                   <span style={s.num}>{i + 1}</span><span>{step}</span>
                 </div>
